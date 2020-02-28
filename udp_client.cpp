@@ -7,7 +7,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <time.h>
 
 #define PORT 12000
 
@@ -31,29 +30,32 @@ int main(){
 
     clock_t start, end;
     double duration;
-    //timeout will be measured in milliseconds, so 1000ms = 1s
-    static int timeout = 1000;
+    //timeout will be measured in milliseconds, so 1s
+    struct timeval timeout;
+    timeout.tv_sec = 1;
+    timeout.tv_usec = 0;
 
     //Set timeout to 1 second
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,(char*)&timeout,sizeof(timeout));
 
-    for(int i = 0; i < 10; i++){
+    const char *message = "ping";
 
-        //Set the buffer
-        buffer = "ping";
+    for(int i = 0; i < 10; i++){
 
         //Log start time
         start = clock();
 
         //Send packet to server
-        n = sendto(sockfd, (char *) buffer, strlen(buffer), MSG_CONFIRM, (struct sockaddr *) &servaddr, &len)
+        n = sendto(sockfd, (char *) message, strlen(message), MSG_CONFIRM, (struct sockaddr *) &servaddr, sizeof(servaddr));
+
+        if(n < 0) std::cout << "Message could not send" << std::endl;
 
         //Receive response from server
         //If the packet is not received in one second, time out and the function returns -1
         //If recvfrom returns -1, we assume the packet was lost
         //Otherwise, the packet was received so we track the round trip time
         if (recvfrom(sockfd, (char *)buffer, sizeof(buffer), MSG_WAITALL, ( struct sockaddr *) &servaddr, &len) < 0){
-            std::cout << "Packet " << i << " was lost." << std::endl;
+            std::cout << "Packet " << (i+1) << " was lost." << std::endl;
         }
         else{
             //get end time
@@ -62,7 +64,7 @@ int main(){
             //calculate duration
             duration = (double) (end - start)/CLOCKS_PER_SEC;
 
-            std::cout << "Round trip time of packet " << i << " is " << duration << " seconds." << std::endl;
+            std::cout << "Round trip time of packet " << (i+1) << " is " << duration << " seconds." << std::endl;
         }
     }
     //close the socket
